@@ -86,7 +86,14 @@ if [ $node_type == "master" ]; then
 
     sleep 60
 
+    #Create .kube file if it does not exists
     mkdir -p $HOME/.kube
+
+    #Move Kubernetes config file if it exists
+    if [ -f $HOME/.kube/config ]; then
+        mv $HOME/.kube/config $HOME/.kube/config.back
+    fi
+
     sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
     sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
@@ -129,6 +136,9 @@ if [ $node_type == "master" ]; then
 
     #Install VICK control plane
     ./vick-control-plane-deploy.sh
+
+    #Install VICK crds
+    kubectl apply -f ../../../build/target/vick.yaml
 
     echo "K8s Master node installation is finished"
 
