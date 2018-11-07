@@ -13,25 +13,17 @@
 # limitations under the License.
 
 apiVersion: v1
-kind: PersistentVolume
+kind: PersistentVolumeClaim
 metadata:
-  name: wso2apim-local-pv
-  labels:
-    purpose: apim-repository-deployment-server
+  name: apim-repository-deployment-server-pvc
+  namespace: vick-system
 spec:
-  capacity:
-    storage: 2Gi
   accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-storage
-  local:
-    path: /mnt/apim_repository_deployment_server
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: disk
-          operator: In
-          values:
-          - local
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: ""
+  selector:
+    matchLabels:
+      purpose: apim-repository-deployment-server
