@@ -32,12 +32,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"reflect"
 
+	istioinformers "github.com/wso2/product-vick/system/controller/pkg/client/informers/externalversions/networking/v1alpha3"
 	//appsv1informers "k8s.io/client-go/informers/apps/v1"
 	//corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	//corev1informers "k8s.io/client-go/informers/core/v1"
 	vickinformers "github.com/wso2/product-vick/system/controller/pkg/client/informers/externalversions/vick/v1alpha1"
+	istionetworklisters "github.com/wso2/product-vick/system/controller/pkg/client/listers/networking/v1alpha3"
 	listers "github.com/wso2/product-vick/system/controller/pkg/client/listers/vick/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
@@ -47,13 +49,16 @@ import (
 )
 
 type gatewayHandler struct {
-	kubeClient       kubernetes.Interface
-	vickClient       vickclientset.Interface
-	deploymentLister appsv1listers.DeploymentLister
-	k8sServiceLister corev1listers.ServiceLister
-	configMapLister  corev1listers.ConfigMapLister
-	gatewayLister    listers.GatewayLister
-	gatewayConfig    config.Gateway
+	kubeClient         kubernetes.Interface
+	vickClient         vickclientset.Interface
+	deploymentLister   appsv1listers.DeploymentLister
+	k8sServiceLister   corev1listers.ServiceLister
+	istioGatewayLister istionetworklisters.GatewayLister
+	istioDRLister      istionetworklisters.DestinationRuleLister
+	istioVSLister      istionetworklisters.VirtualServiceLister
+	configMapLister    corev1listers.ConfigMapLister
+	gatewayLister      listers.GatewayLister
+	gatewayConfig      config.Gateway
 }
 
 func NewController(
@@ -62,17 +67,23 @@ func NewController(
 	systemConfigMapInformer corev1informers.ConfigMapInformer,
 	deploymentInformer appsv1informers.DeploymentInformer,
 	k8sServiceInformer corev1informers.ServiceInformer,
+	istioGatewayInformer istioinformers.GatewayInformer,
+	istioDRInformer istioinformers.DestinationRuleInformer,
+	istioVSInformer istioinformers.VirtualServiceInformer,
 	configMapInformer corev1informers.ConfigMapInformer,
 	gatewayInformer vickinformers.GatewayInformer,
 ) *controller.Controller {
 
 	h := &gatewayHandler{
-		kubeClient:       kubeClient,
-		vickClient:       vickClient,
-		deploymentLister: deploymentInformer.Lister(),
-		k8sServiceLister: k8sServiceInformer.Lister(),
-		configMapLister:  configMapInformer.Lister(),
-		gatewayLister:    gatewayInformer.Lister(),
+		kubeClient:         kubeClient,
+		vickClient:         vickClient,
+		deploymentLister:   deploymentInformer.Lister(),
+		k8sServiceLister:   k8sServiceInformer.Lister(),
+		istioGatewayLister: istioGatewayInformer.Lister(),
+		istioDRLister:      istioDRInformer.Lister(),
+		istioVSLister:      istioVSInformer.Lister(),
+		configMapLister:    configMapInformer.Lister(),
+		gatewayLister:      gatewayInformer.Lister(),
 	}
 	c := controller.New(h, "Gateway")
 
@@ -138,6 +149,22 @@ func (h *gatewayHandler) handle(gateway *v1alpha1.Gateway) error {
 		return err
 	}
 
+	//if err := h.handleIstioGateway(gateway); err != nil {
+	//	return err
+	//}
+	//
+	//if err := h.handleIstioVirtualService(gateway); err != nil {
+	//	return err
+	//}
+
+	if err := h.handleIstioVirtualServicesForIngress(gateway); err != nil {
+		return err
+	}
+
+	if err := h.handleIstioDestinationRules(gateway); err != nil {
+		return err
+	}
+
 	h.updateOwnerCell(gateway)
 
 	return nil
@@ -199,6 +226,86 @@ func (h *gatewayHandler) handleK8sService(gateway *v1alpha1.Gateway) error {
 	glog.Infof("Gateway service created %+v", k8sService)
 
 	gateway.Status.HostName = k8sService.Name
+
+	return nil
+}
+//
+//func (h *gatewayHandler) handleIstioGateway(gateway *v1alpha1.Gateway) error {
+//	istioGateway, err := h.istioGatewayLister.Gateways(gateway.Namespace).Get(resources.IstioGatewayName(gateway))
+//	if errors.IsNotFound(err) {
+//		istioGateway, err = h.vickClient.NetworkingV1alpha3().Gateways(gateway.Namespace).Create(resources.CreateIstioGateway(gateway))
+//		if err != nil {
+//			glog.Errorf("Failed to create Gateway service %v", err)
+//			return err
+//		}
+//	} else if err != nil {
+//		return err
+//	}
+//	glog.Infof("Istio gateway created %+v", istioGateway)
+//
+//	return nil
+//}
+//
+//func (h *gatewayHandler) handleIstioVirtualService(gateway *v1alpha1.Gateway) error {
+//	istioVS, err := h.istioVSLister.VirtualServices(gateway.Namespace).Get(resources.IstioVSName(gateway))
+//	if errors.IsNotFound(err) {
+//		istioVS, err = h.vickClient.NetworkingV1alpha3().VirtualServices(gateway.Namespace).Create(resources.CreateIstioVirtualService(gateway))
+//		if err != nil {
+//			glog.Errorf("Failed to create Gateway service %v", err)
+//			return err
+//		}
+//	} else if err != nil {
+//		return err
+//	}
+//	glog.Infof("Istio virtual service created %+v", istioVS)
+//
+//	return nil
+//}
+
+func (h *gatewayHandler) handleIstioVirtualServicesForIngress(gateway *v1alpha1.Gateway) error {
+	var hasGlobalApis = false
+
+	for _, apiRoute := range gateway.Spec.APIRoutes {
+		if apiRoute.Global == true {
+			hasGlobalApis = true
+			break
+		}
+	}
+
+	if hasGlobalApis == true {
+		istioVS, err := h.istioVSLister.VirtualServices(gateway.Namespace).Get(resources.IstioIngressVirtualServiceName(gateway))
+		if errors.IsNotFound(err) {
+			istioVS, err = h.vickClient.NetworkingV1alpha3().VirtualServices(gateway.Namespace).Create(
+				resources.CreateIstioVirtualServiceForIngress(gateway))
+			if err != nil {
+				glog.Errorf("Failed to create virtual service for ingress %v", err)
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+
+		glog.Infof("Istio virtual service for ingress created %+v", istioVS)
+	} else {
+		glog.Infof("Ingress virtual services not created since gateway %+v does not have global APIs", gateway.Name)
+	}
+
+	return nil
+}
+
+func (h *gatewayHandler) handleIstioDestinationRules(gateway *v1alpha1.Gateway) error {
+	istioDestinationRule, err := h.istioDRLister.DestinationRules(gateway.Namespace).Get(resources.IstioDestinationRuleName(gateway))
+	if errors.IsNotFound(err) {
+		istioDestinationRule, err = h.vickClient.NetworkingV1alpha3().DestinationRules(gateway.Namespace).Create(
+			resources.CreateIstioDestinationRule(gateway))
+		if err != nil {
+			glog.Errorf("Failed to create destination rule %v", err)
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	glog.Infof("Istio destination rule created %+v", istioDestinationRule)
 
 	return nil
 }
