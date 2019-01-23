@@ -460,7 +460,7 @@ fi
 if [[ -n ${IAAS/[ ]*\n/} ]]; then
     iaas=$IAAS
     download_path=${DOWNLOAD_PATH:-tmp-wso2}
-    git_base_url=${GIT_BASE_URL:-https://raw.githubusercontent.com/wso2/product-vick/master}
+    git_base_url=${GIT_BASE_URL:-https://raw.githubusercontent.com/wso2/product-vick/demo-1}
     istio_version=${ISTIO_VERSION:-1.0.2}
     if [ $iaas == "kubeadm" ]; then
         k8s_version=${K8S_VERSION:-1.11.3-00}
