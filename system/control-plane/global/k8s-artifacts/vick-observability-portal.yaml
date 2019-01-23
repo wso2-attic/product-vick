@@ -30,7 +30,7 @@ spec:
         node: vick-observability-portal
     spec:
       containers:
-      - image: wso2vick/observability-portal
+      - image: wso2vick/observability-portal:demo-1
         name: observability-portal
         imagePullPolicy: Always
         env:

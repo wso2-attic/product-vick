@@ -17,5 +17,5 @@ spec:
     spec:
       containers:
       - name: vick-controller
-        image: wso2vick/vick-controller:latest
+        image: wso2vick/vick-controller:demo-1
       serviceAccountName: vick-controller

@@ -75,15 +75,15 @@ data:
     reporter.api.version="v1"
     reporter.compression.enabled=false
 
-  cell-gateway-init-image: wso2vick/cell-gateway-init
-  cell-gateway-image: wso2vick/cell-gateway
+  cell-gateway-init-image: wso2vick/cell-gateway-init:demo-1
+  cell-gateway-image: wso2vick/cell-gateway:demo-1
   cell-sts-config: |
     {
         "endpoint": "https://gateway.vick-system:9443/api/identity/vick-auth/v1.0/sts/token",
         "username": "admin",
         "password": "admin"
     }
-  cell-sts-image: wso2vick/cell-sts:latest
+  cell-sts-image: wso2vick/cell-sts:demo-1
 kind: ConfigMap
 metadata:
   name: vick-config

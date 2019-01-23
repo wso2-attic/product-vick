@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
       -
-        image: wso2vick/wso2sp-worker
+        image: wso2vick/wso2sp-worker:demo-1
         name: wso2sp-worker
         imagePullPolicy: Always
         resources:
