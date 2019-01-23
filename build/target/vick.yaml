@@ -112,6 +112,9 @@ rules:
   - networking.istio.io
   resources:
   - envoyfilters
+  - gateways
+  - virtualservices
+  - destinationrules
   verbs:
   - get
   - list
@@ -310,15 +313,7 @@ data:
     password="admin"
 
     [b7a.observability.tracing]
-    enabled=true
-    name="zipkin"
-
-    [b7a.observability.tracing.zipkin]
-    reporter.hostname="wso2sp-worker.vick-system"
-    reporter.port=9411
-    reporter.api.context="/api/v1/spans"
-    reporter.api.version="v1"
-    reporter.compression.enabled=false
+    enabled=false
 
   cell-gateway-init-image: wso2vick/cell-gateway-init
   cell-gateway-image: wso2vick/cell-gateway
@@ -326,9 +321,10 @@ data:
     {
         "endpoint": "https://gateway.vick-system:9443/api/identity/vick-auth/v1.0/sts/token",
         "username": "admin",
-        "password": "admin"
+        "password": "admin",
+        "globalJWKS" : "https://gateway.vick-system:9443/oauth2/jwks"
     }
-  cell-sts-image: wso2vick/cell-sts:latest
+  cell-sts-image: wso2vick/cell-sts
 kind: ConfigMap
 metadata:
   name: vick-config
@@ -353,6 +349,6 @@ spec:
     spec:
       containers:
       - name: vick-controller
-        image: wso2vick/vick-controller:envoy-cell-gw
+        image: wso2vick/vick-controller
       serviceAccountName: vick-controller
 ---
